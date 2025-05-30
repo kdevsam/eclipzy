@@ -25,12 +25,12 @@ export default function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0f0c29] via-[#302b63] to-[#24243e] flex items-center justify-center px-6 py-20 text-white font-sans">
+<div className="min-h-screen bg-gradient-to-br from-[#1f1f1f] via-[#2b2b2b] to-[#1f1f1f] flex items-center justify-center px-6 py-20 text-white font-sans">
       <form
         onSubmit={handleSubmit}
         className="bg-white/5 backdrop-blur-md border border-white/10 p-8 rounded-2xl max-w-md w-full shadow-2xl"
       >
-        <h2 className="text-3xl font-extrabold text-center mb-6 text-white">Welcome to Eclipzy</h2>
+        <h2 className="text-3xl font-extrabold text-center mb-6 text-white">Welcome to eClipzy</h2>
         <p className="text-sm text-center text-white/60 mb-8">Login to your account to start creating AI-powered clips</p>
 
         <input
@@ -59,7 +59,7 @@ export default function LoginForm() {
         </button>
 
         <p className="mt-6 text-xs text-center text-white/40">
-          &copy; {new Date().getFullYear()} Eclipzy. All rights reserved.
+          &copy; {new Date().getFullYear()} eClipzy. All rights reserved.
         </p>
       </form>
     </div>

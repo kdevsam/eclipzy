@@ -9,14 +9,11 @@ export default async function LoginPage() {
     data: { session },
   } = await supabase.auth.getSession()
 
-  // ✅ Redirect if already logged in
   if (session) {
     redirect('/dashboard')
   }
 
   return (
-    <main className="min-h-screen bg-dark text-white flex items-center justify-center">
-      <LoginForm />
-    </main>
+        <LoginForm />
   )
 }

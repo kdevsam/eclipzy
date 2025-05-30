@@ -4,9 +4,11 @@ import expressWs from 'express-ws';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import extractRouter from './routes/extract.js';
+import segmentRouter from './routes/segment.js';
 import fs from 'fs';
 import cookie from 'cookie';
 import jwt from 'jsonwebtoken';
+import videoRoutes from './routes/video.js';
 
 // Load env vars
 dotenv.config();
@@ -66,6 +68,8 @@ app.ws('/', (ws, req) => {
 
 // Routes
 app.use('/api/extract', extractRouter);
+app.use('/api/segment', segmentRouter);
+app.use('/video', videoRoutes);
 
 app.get('/', (req, res) => {
 	res.send(

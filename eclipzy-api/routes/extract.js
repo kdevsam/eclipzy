@@ -14,12 +14,30 @@ router.post('/', requireAuth, async (req, res) => {
 	const filePath = `downloads/video-${Date.now()}.mp4`;
 
 	try {
-		const subprocess = execa('yt-dlp', ['-o', filePath, youtubeUrl]);
+		// Step 1: Use yt-dlp to fetch metadata
+		const metaResult = await execa('yt-dlp', ['--dump-json', youtubeUrl]);
+		const meta = JSON.parse(metaResult.stdout);
+		const title = meta.title || 'Untitled';
+		const videoId = meta.id;
+		const durationSeconds = meta.duration;
+		const duration =
+			durationSeconds != null
+				? `${Math.floor(durationSeconds / 60)}:${String(
+						durationSeconds % 60
+				  ).padStart(2, '0')}`
+				: null;
+
+		// Step 2: Start download
+		const subprocess = execa('yt-dlp', [
+			'-f',
+			'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+			'-o',
+			filePath,
+			youtubeUrl,
+		]);
 
 		subprocess.stdout?.on('data', (data) => {
 			const text = data.toString();
-			//console.log(`[yt-dlp] ${text}`);
-
 			const match = text.match(/\[download\]\s+(\d+\.\d+)%/);
 			if (match) {
 				const percent = parseFloat(match[1]);
@@ -39,14 +57,18 @@ router.post('/', requireAuth, async (req, res) => {
 
 		await subprocess;
 
+		// Step 3: Store in DB
 		await supabase.from('videos').insert([
 			{
 				user_id: userId,
 				youtube_url: youtubeUrl,
 				file_path: filePath,
+				title,
+				duration,
 			},
 		]);
 
+		// Step 4: Notify frontend
 		const socket = userSockets.get(userId);
 		if (socket?.readyState === 1) {
 			socket.send(JSON.stringify({ type: 'done', filePath }));

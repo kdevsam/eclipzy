@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Eclipzy",
+  title: "eClipzy",
   description: "Ai automatic video editing tool",
 };
 
