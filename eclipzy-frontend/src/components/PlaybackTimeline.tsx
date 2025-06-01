@@ -36,7 +36,7 @@ export default function PlaybackTimeline({ videoRef }: Props) {
   }
 
   return (
-    <div className="w-full mt-4">
+    <div className="w-80 m-auto">
       <input
         ref={rangeRef}
         type="range"

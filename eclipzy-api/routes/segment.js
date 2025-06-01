@@ -8,43 +8,10 @@ import {
 	rateCollectiveClip,
 	generateClipTitle,
 } from '../services/openai-clipscorer.js';
-import { generateSRT } from '../utils/generateSRT.js';
+import { generateSRT, generateSmartASS } from '../utils/generateSRT.js';
+import { runWhisper } from '../utils/transcribe.js';
 
 const router = express.Router();
-
-// Helper to run Whisper transcription
-async function runWhisper(absPath, whisperOut, folder) {
-	return new Promise((resolve, reject) => {
-		if (fs.existsSync(whisperOut)) {
-			return resolve();
-		}
-		const whisperCmd = `whisper "${absPath}" --model base --output_format json --output_dir "${folder}" --word_timestamps True --verbose True`;
-
-		console.log(whisperCmd);
-		const whisperProc = spawn(whisperCmd, {
-			shell: true,
-			env: {
-				...process.env,
-				PYTHONUNBUFFERED: '1',
-			},
-		});
-
-		whisperProc.stdout.on('data', (data) => {
-			console.log(`[whisper] ${data.toString()}`);
-		});
-
-		whisperProc.stderr.on('data', (data) => {
-			console.error(`[whisper error] ${data.toString()}`);
-		});
-
-		whisperProc.on('close', (code) => {
-			if (code !== 0 || !fs.existsSync(whisperOut)) {
-				return reject(new Error('Whisper transcription failed'));
-			}
-			resolve();
-		});
-	});
-}
 
 // Convert SRT to styled ASS subtitle
 function convertSrtToAss(srtPath, assPath, styleOverride = {}) {
@@ -80,7 +47,7 @@ export async function clipWithFadeAndSubs(
 	portrait = true // default true for portrait mode
 ) {
 	const assPath = srtPath.replace('.srt', '.ass');
-	convertSrtToAss(srtPath, assPath);
+	//convertSrtToAss(srtPath, assPath);
 
 	const duration = parseFloat((end - start).toFixed(3));
 	const clipDir = path.dirname(clipPath);
@@ -172,8 +139,8 @@ async function generateClips(absPath, segments, folder, clipsDir, fileName) {
 	for (const clip of top5) {
 		const title = await generateClipTitle(clip.text);
 		const clipPath = path.join(clipsDir, `clip-${clip.index + 1}.mp4`);
-		const srtPath = path.join(clipsDir, `clip-${clip.index + 1}.srt`);
-		generateSRT(segments, clip.start, clip.end, srtPath);
+		const srtPath = path.join(clipsDir, `clip-${clip.index + 1}.ass`);
+		generateSmartASS(segments, clip.start, clip.end, srtPath);
 		await clipWithFadeAndSubs(
 			absPath,
 			clipPath,

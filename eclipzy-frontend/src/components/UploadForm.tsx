@@ -6,54 +6,68 @@ import { supabase } from '@/lib/supabase'
 export default function UploadForm() {
   const [file, setFile] = useState<File | null>(null)
   const [youtubeUrl, setYoutubeUrl] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [message, setMessage] = useState('')
-  const [progress, setProgress] = useState(0)
   const [videoId, setVideoId] = useState<string | null>(null)
   const [videoTitle, setVideoTitle] = useState<string | null>(null)
+  const [progress, setProgress] = useState(0)
+  const [message, setMessage] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [invalidUrl, setInvalidUrl] = useState(false)
   const socketRef = useRef<WebSocket | null>(null)
 
-//   useEffect(() => {
-//     const socket = new WebSocket('ws://localhost:4000')
-//     socketRef.current = socket
+  useEffect(() => {
+    return () => {
+      if (socketRef.current) socketRef.current.close()
+    }
+  }, [])
 
-//     socket.onmessage = (event) => {
-//       const { type, progress, filePath } = JSON.parse(event.data)
-//     console.log(progress);
-//       if (type === 'progress') {
-//         setProgress(progress)
-//       } else if (type === 'done') {
-//         setProgress(100)
-//         setMessage(`Download complete! File: ${filePath}`)
-//       }
-//     }
+  const handleYoutubeUrl = async (value: string) => {
+    setYoutubeUrl(value)
+    const id = extractVideoId(value)
+    setVideoId(id)
+    setVideoTitle(null)
 
-//     socket.onerror = () => setMessage('WebSocket error occurred')
-//     socket.onclose = () => console.log('WebSocket closed')
+    if (!id) {
+      setInvalidUrl(true)
+      return
+    } else {
+      setInvalidUrl(false)
+    }
 
-//     return () => socket.close()
-//   }, [])
+    try {
+      const res = await fetch(
+        `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${id}&format=json`
+      )
+      if (res.ok) {
+        const data = await res.json()
+        setVideoTitle(data.title)
+      }
+    } catch {
+      console.warn('Could not fetch video title')
+    }
+  }
+
+  const extractVideoId = (url: string): string | null => {
+    const match = url.match(/(?:youtube\.com\/.*v=|youtu\.be\/)([^&?/]{11})/)
+    return match ? match[1] : null
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
-    setMessage('')
     setProgress(0)
+    setMessage('')
 
-    if (youtubeUrl) {
-      const token = await supabase.auth.getSession()
-
-       // ✅ Open WebSocket AFTER user submits
+    const token = await supabase.auth.getSession()
     const socket = new WebSocket('ws://localhost:4000')
+    socketRef.current = socket
 
     socket.onmessage = (event) => {
       const { type, progress, filePath } = JSON.parse(event.data)
-
       if (type === 'progress') {
         setProgress(progress)
       } else if (type === 'done') {
         setProgress(100)
-        setMessage(`Download complete! File: ${filePath}`)
+        setMessage(`Download complete: ${filePath}`)
         socket.close()
       }
     }
@@ -63,116 +77,94 @@ export default function UploadForm() {
       socket.close()
     }
 
+    if (youtubeUrl) {
       const res = await fetch('/api/extract', {
         method: 'POST',
         body: JSON.stringify({ youtubeUrl, token }),
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' }
       })
 
       const result = await res.json()
-      if (!res.ok) {
-        setMessage(result.error || 'Download failed.')
-      } else {
-        setMessage(result.message || 'Done')
-      }
+      setMessage(result?.message || 'Download complete.')
     } else if (file) {
-      setMessage('File selected — upload logic not wired yet.')
+      setMessage('File selected — upload logic not implemented yet.')
     } else {
-      setMessage('Please upload a file or paste a YouTube link.')
+      setMessage('Please upload a file or paste a link.')
     }
 
     setSubmitting(false)
   }
 
-  function extractVideoId(url: string): string | null {
-    const match = url.match(
-      /(?:youtube\.com\/.*v=|youtu\.be\/)([^&?/]{11})/
-    )
-    return match ? match[1] : null
-  }
-
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-white/10 border border-white/20 p-8 rounded-xl w-full max-w-md text-white"
+      className="flex flex-col items-center justify-center h-[80vh] w-full max-w-3xl mx-auto text-white"
     >
-      <h2 className="text-2xl font-bold text-eclipse mb-4">Upload or Link</h2>
+      <div className="w-full max-w-xl space-y-6">
+        <div className="relative bg-white/5 border border-white/20 rounded-2xl shadow-lg p-6">
+          <input
+            type="url"
+            placeholder="Drop a video link"
+            value={youtubeUrl}
+            onChange={(e) => handleYoutubeUrl(e.target.value)}
+            className="w-full px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/60"
+          />
 
-      <input
-        type="file"
-        accept="video/mp4"
-        className="block w-full mb-4"
-        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-      />
+          {invalidUrl && (
+            <p className="text-red-500 text-sm mt-2 font-semibold">❌ Invalid YouTube link</p>
+          )}
 
-      <div className="text-center mb-4">or</div>
+          {!videoId && (
+            <div className="mt-4 border-2 border-dashed border-white/20 rounded-lg p-12 text-center bg-white/5">
+              <label htmlFor="file-upload" className="cursor-pointer block">
+                <div className="text-purple-300 text-5xl mb-2">📁</div>
+                <p className="text-white/80 font-semibold">Click to browse</p>
+                <p className="text-white/50 text-sm mt-1">
+                  or drag & drop — supported file types: video, audio
+                </p>
+                <input
+                  id="file-upload"
+                  type="file"
+                  className="hidden"
+                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                />
+              </label>
+            </div>
+          )}
 
-      <input
-        type="url"
-        placeholder="Paste a YouTube link"
-        className="w-full px-4 py-2 rounded bg-white/10 border border-white/20 placeholder-white/60"
-        value={youtubeUrl}
-        onChange={async (e) => {
-            const value = e.target.value
-            setYoutubeUrl(value)
-          
-            const id = extractVideoId(value)
-            setVideoId(id)
-            setVideoTitle(null)
-          
-            if (id) {
-              try {
-                const res = await fetch(
-                  `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${id}&format=json`
-                )
-                if (res.ok) {
-                  const data = await res.json()
-                  setVideoTitle(data.title)
-                }
-              } catch (err) {
-                console.error('Failed to fetch video title')
-              }
-            }
-          }}
-      />
-      {videoId && (
-  <div className="mt-4">
-     {videoTitle && (
-      <p className="mt-2 text-white text-center text-sm font-semibold">
-        {videoTitle}
-      </p>
-    )}
-    <img
-      src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
-      alt="Video thumbnail"
-      className="w-full rounded-lg border border-white/20"
-    />
-   
-  </div>
-)}
-     
+          {videoId && (
+            <div className="mt-4 text-center">
+              {videoTitle && <p className="mb-1 font-medium">{videoTitle}</p>}
+              <img
+                src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
+                className="w-full rounded-md border border-white/10"
+              />
+            </div>
+          )}
 
-{progress > 0 && (
-  <div className="relative mt-4 w-full bg-white/20 rounded h-6 overflow-hidden">
-    <div
-      className="bg-green-500 h-full transition-all duration-300"
-      style={{ width: `${progress}%` }}
-    ></div>
-    <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-white">
-      {Math.round(progress)}%
-    </span>
-  </div>
-)}
+          {progress > 0 && (
+            <div className="relative mt-6 h-6 rounded-lg overflow-hidden bg-white/10">
+              <div
+                className="absolute top-0 left-0 h-full bg-green-500 transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              />
+              <div className="relative z-10 flex justify-center items-center h-full font-semibold text-sm">
+                {progress}%
+              </div>
+            </div>
+          )}
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="w-full mt-6 bg-eclipse text-dark font-bold py-2 rounded hover:brightness-90"
-      >
-        {submitting ? 'Submitting...' : 'Submit'}
-      </button>
+          <button
+            type="submit"
+            disabled={submitting || invalidUrl}
+            className="mt-6 w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 rounded-lg transition disabled:opacity-40"
+          >
+            {submitting ? 'Submitting...' : 'Continue'}
+          </button>
 
-      {message && <p className="text-sm mt-4 text-center">{message}</p>}
+          {message && <p className="text-sm mt-4 text-center">{message}</p>}
+        </div>
+      </div>
     </form>
   )
 }

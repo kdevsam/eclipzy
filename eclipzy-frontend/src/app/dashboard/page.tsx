@@ -8,7 +8,7 @@ import UploadForm from '@/components/UploadForm'
 import MyVideosTab from '@/components/MyVideosTab'
 import TimelineEditor from '@/components/TimelineEditor'
 
-const SidebarTabs = ['Home', 'Upload', 'Editor', 'My Videos', 'Templates']
+const SidebarTabs = ['Home', 'Upload', 'Editor', 'My Videos', 'AI Clips']
 
 export default function VideoEditorLayout() {
   const [activeTab, setActiveTab] = useState('Home')
@@ -68,9 +68,9 @@ export default function VideoEditorLayout() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto p-10">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">{activeTab}</h1>
+      <main className="flex-1 overflow-y-auto p-5">
+        <div className="flex justify-end items-center mb-6">
+          
           {user && (
             <div className="relative" ref={dropdownRef}>
               <button
@@ -111,6 +111,8 @@ export default function VideoEditorLayout() {
         )}
 
         {activeTab === 'My Videos' && user && <MyVideosTab user={user} />}
+
+        {/* {activeTab === 'AI Clips' && user && <MyVideosTab user={user} />} */}
       </main>
     </div>
   )

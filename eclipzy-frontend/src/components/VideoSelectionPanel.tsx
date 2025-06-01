@@ -48,7 +48,7 @@ export default function VideoSelectionPanel({ onSelect, selectedVideoId }: Props
           return (
             <div
               key={v.id}
-              className={`bg-[#2a2a2a] border border-white/10 rounded-lg overflow-hidden shadow transition hover:brightness-110 cursor-pointer ${
+              className={`bg-[#2a2a2a] border border-white/10 rounded-lg w-80 overflow-hidden shadow transition hover:brightness-110 cursor-pointer ${
                 selectedVideoId === v.id ? 'ring-2 ring-[#eb5353]' : ''
               }`}
               onClick={() => onSelect(v)}

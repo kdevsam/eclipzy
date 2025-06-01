@@ -20,53 +20,88 @@ export function generateSRT(segments, clipStart, clipEnd, outputPath) {
 	fs.writeFileSync(outputPath, srt);
 }
 
-export function generateSmartSRT(segments, clipStart, clipEnd, outputPath) {
-	let srt = '';
-	let index = 1;
-
+export function generateSmartASS(
+	segments,
+	clipStart,
+	clipEnd,
+	outputPath,
+	captionFontSize = 128,
+	bounce = true
+) {
 	const words = segments
 		.flatMap((seg) => seg.words || [])
-		.filter((word) => word.start >= clipStart && word.end <= clipEnd);
+		.filter((w) => w.start >= clipStart && w.end <= clipEnd);
 
-	let buffer = [];
-	let groupStart = null;
+	const header = `[Script Info]
+Title: Smart Captions
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+Timer: 100.0000
 
-	function flushGroup() {
-		if (buffer.length === 0) return;
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,Arial,${captionFontSize},&H00FFFFFF,&H000000FF,&H00000000,&H64000000,1,0,0,0,100,100,0,0,1,3,1,2,10,10,50,1
+Style: GlowYellow,Arial,${captionFontSize},&H00FFFF00,&H000000FF,&H00303000,&H64000000,1,0,0,0,100,100,0,0,1,3,2,2,10,10,50,1
 
-		const start = buffer[0].start - clipStart;
-		const end = buffer[buffer.length - 1].end - clipStart;
-		const text = buffer
-			.map((w) => w.word)
-			.join(' ')
-			.trim();
 
-		srt += `${index++}\n${formatTime(start)} --> ${formatTime(
-			end
-		)}\n${text}\n\n`;
-		buffer = [];
-	}
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text`;
 
+	let dialogue = '';
 	let i = 0;
+
 	while (i < words.length) {
-		const word = words[i];
-		buffer.push(word);
+		const group = [];
+		let j = i;
 
-		// Flush if:
-		// - Group is 2–3 words
-		// - OR current word ends with punctuation
-		const endsWithPunct = /[.?!,]$/.test(word.word);
-		const groupSize = buffer.length;
+		// Collect 2–3 words into the group
+		while (j < words.length && group.length < 3) {
+			const curr = words[j];
+			group.push(curr);
 
-		if (groupSize >= 2 && (groupSize >= 3 || endsWithPunct)) {
-			flushGroup();
+			const next = words[j + 1];
+			if (
+				!next ||
+				next.start - curr.end > 0.5 ||
+				/[.?!]$/.test(curr.word)
+			)
+				break;
+			j++;
 		}
 
-		i++;
-	}
-	flushGroup(); // flush remainder
+		// One line per word in group with only one highlighted
+		for (let k = 0; k < group.length; k++) {
+			const word = group[k];
+			const start = word.start - clipStart;
+			const end = word.end - clipStart;
 
-	fs.writeFileSync(outputPath, srt);
+			const line = group
+				.map((w, idx) => {
+					const safeWord = w.word.replace(/[{}]/g, ''); // avoid malformed tags
+					return idx === k
+						? `{\\rHighlight}${safeWord}`
+						: `{\\rDefault}${safeWord}`;
+				})
+				.join(' ');
+
+			dialogue += `\nDialogue: 0,${formatASSTime(start)},${formatASSTime(
+				end
+			)},Default,,0,0,0,,${line}`;
+		}
+
+		i += group.length; // ✅ Advance whole group (no overlapping duplication)
+	}
+
+	fs.writeFileSync(outputPath, `${header}${dialogue}`);
+}
+
+function formatASSTime(seconds) {
+	const hrs = Math.floor(seconds / 3600);
+	const mins = Math.floor((seconds % 3600) / 60);
+	const secs = Math.floor(seconds % 60);
+	const cs = Math.floor((seconds % 1) * 100);
+	return `${pad(hrs)}:${pad(mins)}:${pad(secs)}.${pad(cs)}`;
 }
 
 function formatTime(seconds) {
