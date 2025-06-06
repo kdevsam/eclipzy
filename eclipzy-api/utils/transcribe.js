@@ -32,7 +32,11 @@ export async function runWhisper(
 
 		const proc = spawn(whisperCmd, {
 			shell: true,
-			env: { ...process.env, PYTHONUNBUFFERED: '1' },
+			env: {
+				...process.env,
+				PYTHONUNBUFFERED: '1',
+				PYTHONIOENCODING: 'utf-8', // ← This fixes UnicodeEncodeError
+			},
 		});
 
 		proc.stdout.on('data', (data) => {

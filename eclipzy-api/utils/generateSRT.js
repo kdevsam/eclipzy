@@ -42,7 +42,7 @@ Timer: 100.0000
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
 Style: Default,Arial,${captionFontSize},&H00FFFFFF,&H000000FF,&H00000000,&H64000000,1,0,0,0,100,100,0,0,1,3,1,2,10,10,50,1
-Style: GlowYellow,Arial,${captionFontSize},&H00FFFF00,&H000000FF,&H00303000,&H64000000,1,0,0,0,100,100,0,0,1,3,2,2,10,10,50,1
+Style: Highlight,Arial,${captionFontSize},&H00FFFF00,&H000000FF,&H00303000,&H64000000,1,0,0,0,100,100,0,0,1,3,2,2,10,10,50,1
 
 
 [Events]
